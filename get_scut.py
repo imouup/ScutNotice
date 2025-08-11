@@ -19,10 +19,10 @@ else:
     }
 
 # 设置代理
-proxy = {
-    'http': 'socks5://10.195.134.11:1080',
-    'https': 'socks5://10.195.134.11:1080',
-}
+# proxy = {
+#     'http': 'socks5://10.195.134.11:1080',
+#     'https': 'socks5://10.195.134.11:1080',
+# }
 
 
 # 获取教务处通知
@@ -37,15 +37,17 @@ def get_jw_notice():
     }
 
     try:
-        re = requests.post('https://jw.scut.edu.cn/zhinan/cms/article/v2/findInformNotice.do',headers=headers,params=pa, proxies=proxy)
+        re = requests.post('https://jw.scut.edu.cn/zhinan/cms/article/v2/findInformNotice.do',headers=headers,params=pa)
         tx = re.text
-        return tx
+        js = json.loads(tx)
+
+
+        return jsonify(js)
 
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "socks5代理服务器错误，请检查410wifi上的代理服务"}), 500
     except Exception as e:
         return jsonify({"error": f"发生未知错误:{e}"}), 500
-
 
 
 # 修改headers
