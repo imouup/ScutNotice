@@ -101,7 +101,7 @@ class Scrabbler:
         self.headers.update(new_headers)
         with open('headers.json', 'w', encoding='utf-8') as json_file:
             json.dump(self.headers, json_file, ensure_ascii=False, indent=4)
-        return jsonify({"message": "Headers updated successfully", "new_headers": self.headers})
+        return {"message": "Headers updated successfully", "new_headers": self.headers}
 
 
 
@@ -110,7 +110,7 @@ class Scrabbler:
         '''
         抓取函数模板
         :param request: flask request对象, 包含输入参数
-        :return: json格式数据
+        :return: 字典格式数据
         '''
 
         pa = {
@@ -141,13 +141,13 @@ class Scrabbler:
                 long_data.update(new_data)
                 json.dump(long_data, long_storage_file, ensure_ascii=False, indent=4)
 
-            return [jsonify({"message": "Scrabble successful", "NewData": new_data, "WhetherNew": whether_new}), 200]
+            return {"message": "Scrabble successful", "NewData": new_data, "WhetherNew": whether_new}, 200
 
         # 错误处理
         except requests.exceptions.ConnectionError:
-            return jsonify({"error": "socks5代理服务器错误，请检查410wifi上的代理服务"}), 500
+            return {"error": "socks5代理服务器错误，请检查410wifi上的代理服务"}, 500
         except Exception as e:
-            return jsonify({"error": f"发生未知错误: {e}"}), 500
+            return {"error": f"发生未知错误: {e}"}, 500
 
 
     def jwnotice(self, request):
@@ -156,21 +156,21 @@ class Scrabbler:
         :param request: flask request对象, 包含输入参数
         :return: json格式数据
         '''
-        # 根据name判断tag
+        # 根据name判断category
         if not request.args.get('name'):
-            return jsonify({"error": "name parameter is required"}), 400
+            return {"error": "name parameter is required"}, 400
         name = request.args.get('name')
         if name == 'jw':
-            tag = 0
+            category = 0
         elif name == 'xy':
-            tag = 1
+            category = 1
         else:
-            return jsonify({"error": "name parameter must be 'jw' or 'xy'"}), 400
+            return {"error": "name parameter must be 'jw' or 'xy'"}, 400
 
 
         pa = {
-            'category': request.args.get('category', default=0, type=int),
-            'tag': tag,
+            'category': category,
+            'tag': request.args.get('tag', default=0, type=int),
             'pageNum': request.args.get('pageNum', default=1, type=int),
             'pageSize': request.args.get('pageSize', default=15, type=int),
             'keyword': '',
@@ -213,10 +213,10 @@ class Scrabbler:
                     json.dump(long_data, long_storage_file, ensure_ascii=False, indent=4)
 
 
-            return jsonify({"message": "Scrabble successful", "NewData": new_data, "WhetherNew": whether_new}),200
+            return {"message": "Scrabble successful", "NewData": new_data, "WhetherNew": whether_new},200
 
         # 错误处理
         except requests.exceptions.ConnectionError:
-            return jsonify({"error": "socks5代理服务器错误，请检查410wifi上的代理服务"}), 500
+            return {"error": "socks5代理服务器错误，请检查410wifi上的代理服务"}, 500
         except Exception as e:
-            return jsonify({"error": f"发生未知错误: {e}"}), 500
+            return {"error": f"发生未知错误: {e}"}, 500
