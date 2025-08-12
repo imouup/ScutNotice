@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from datetime import datetime
+from datetime import datetime, timezone
 import scrabbler
 import requests
 import json
@@ -10,6 +10,7 @@ import pytz
 app = Flask(__name__)
 scrabbler = scrabbler.Scrabbler()
 namelist = scrabbler.namelist  # 获取所有数据的存储名称
+lastUpdated = None
 
 # 设置namedict，包含每个name的信息
 namedict = {
@@ -45,7 +46,20 @@ def update():
     for tag in range(1,7):
         result[tag] = feed_tag(name, tag)
 
+    # 记录最后更新时间
+    global lastUpdated
+    lastUpdated = datetime.now(timezone.utc).isoformat()
+
     return jsonify({"message":"RSS更新完成", "result":result}), 200
+
+# 获取lastupdated
+@app.route('/lastUpdated', methods=['GET'])
+def last_updated():
+    data = {
+        "lastUpdated": lastUpdated
+    }
+    return jsonify(data), 200
+
 
 
 # RSS文件生成(不筛选)

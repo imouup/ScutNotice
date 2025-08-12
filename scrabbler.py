@@ -3,7 +3,6 @@ import requests
 import json
 from flask import Flask, jsonify, request
 
-from scut.get_scut import qstorage
 
 os.makedirs("./data", exist_ok=True)
 
