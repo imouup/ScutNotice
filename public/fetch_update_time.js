@@ -1,7 +1,7 @@
 // 获取最后一次更新时间
 window.onload = function() {
     // 后端API的地址，你需要替换成你自己的实际地址
-    const apiUrl = 'https://scutnotice.nyaku.moe/last-updated';
+    const apiUrl = 'https://scutnotice.nyaku.moe/lastUpdated';
 
     // 使用 fetch API 向后端请求数据
     fetch(apiUrl)
