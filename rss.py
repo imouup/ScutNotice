@@ -28,6 +28,18 @@ namedict = {
     }
 }
 
+# 读取上一次更新时间
+def init_last_updated():
+    if os.path.exists('data/lastUpdated.txt'):
+        with open('data/lastUpdated.txt', 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    else:
+        return None
+
+# 写入上一次更新时间
+def write_last_updated(lastUpdated):
+    with open('data/lastUpdated.txt', 'w', encoding='utf-8') as f:
+        f.write(lastUpdated)
 
 
 # 建立public文件夹
@@ -49,12 +61,17 @@ def update():
     # 记录最后更新时间
     global lastUpdated
     lastUpdated = datetime.now(timezone.utc).isoformat()
+    write_last_updated(lastUpdated)
 
     return jsonify({"message":"RSS更新完成", "result":result}), 200
 
 # 获取lastupdated
 @app.route('/lastUpdated', methods=['GET'])
 def last_updated():
+    global lastUpdated
+    if lastUpdated is None:
+        lastUpdated = init_last_updated() # 若内存中无lastUpdated则从文件中读取
+
     data = {
         "lastUpdated": lastUpdated
     }
