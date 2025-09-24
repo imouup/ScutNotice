@@ -29,6 +29,18 @@ def jwnotice():
             update_re = update_rss(name)
     return jsonify({'getre':reData, 'update_re': update_re if update_re else 'No need to update rss'}) # 返回抓取结果和更新结果
 
+# 统一门户通知栏
+@app.route('/scut/myscut_notice', methods=['GET'])
+def jwnotice():
+    reData = scrabbler.myscut_notice(request) # 传入request对象
+    update_re = None
+    # 仅当成功抓取数据后更新long storage
+    if reData[1] == 200:
+        whethernew = reData[0].get('WhetherNew') # 判断是否需要更新RSS
+        if whethernew == 1:
+            name = request.args.get('name')
+            update_re = update_rss(name)
+    return jsonify({'getre':reData, 'update_re': update_re if update_re else 'No need to update rss'}) # 返回抓取结果和更新结果
 
 # 后端api
 ## 修改headers接口

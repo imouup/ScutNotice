@@ -2,10 +2,30 @@ import os
 import requests
 import json
 from flask import Flask, jsonify, request
+import ssl
+from requests.adapters import HTTPAdapter
+from urllib3.poolmanager import PoolManager
 
+from scut.get_scut import headers
 
 os.makedirs("./data", exist_ok=True)
+os.makedirs("./headers", exist_ok=True)
 
+# 定义一个低 SSL 安全性的自定义 Adapter, 用于抓取统一门户通知
+class Low_secure_HttpAdapter(HTTPAdapter):
+    def init_poolmanager(self, connections, maxsize, block=False):
+        # 创建一个自定义的 SSL 上下文
+        # 'ALL' 表示接受所有服务端支持的加密算法
+        # @SECLEVEL=1 降低了安全等级（默认为2），允许一些老旧但仍被部分服务器使用的算法
+        ctx = ssl.create_default_context()
+        ctx.set_ciphers('ALL:@SECLEVEL=1')
+
+        self.poolmanager = PoolManager(
+            num_pools=connections,
+            maxsize=maxsize,
+            block=block,
+            ssl_context=ctx
+        )
 
 class Scrabbler:
     '''
@@ -14,24 +34,23 @@ class Scrabbler:
     def __init__(self):
         self.headers = None
         self.proxy = None
-        self.namelist = ['jw', 'xy'] # 所有数据的存储名称, 用于数据存储
+        self.namelist = ['jw', 'xy', 'myscut_gw', 'myscut_sw', 'myscut_xz', 'myscut_dw', 'myscut_xs', 'myscut_news'] # 所有数据的存储名称, 用于数据存储
+        self.platform_list = ['jw', 'myscut'] # 支持的平台
         self.qdata = {} # quick storage 内存
         self._set()
         self._load_quick_storage()  # 加载 quick storage 中的内容到内存
+        self.headers = {}
 
     def _load_headers(self):
-        # 读取headers配置信息
-        if os.path.exists('headers.json'):
-            with open('headers.json', 'r', encoding='utf-8') as json_file:
-                headers = json.load(json_file)
 
-        else:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0',
-                'Cookie': 'JSESSIONID=4E5BE59DFABCFC3D311A27803FC76F3E; my_client_ticket=Guih0P5iamKYp3wu',
-                'sec-ch-ua-platform': "Windows"
-            }
-        return headers
+        for platform in self.platform_list:
+            path = f'headers/{platform}_headers.json'
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as json_file:
+                    self.headers[platform] = json.load(json_file)
+            else:
+                return {"error": f"Headers file {path} not found"}, 500
+
 
     def _load_proxy(self):
         # 设置代理
@@ -81,7 +100,7 @@ class Scrabbler:
         return [1 if new_data else 0, new_data]
 
 
-    # 设置headers和代理
+    # 初始化代理和 headers
     def _set(self):
         self.headers = self._load_headers()
         self.proxy = self._load_proxy()
@@ -92,15 +111,19 @@ class Scrabbler:
     def edit_headers(self, request):
         '''
         修改headers
-        :param request: flask request对象（POST方法）
+        :param request: flask request对象（POST方法）, 包含 headers data和 platform name
         :return: json格式的message和新headers
         '''
 
-        new_headers = request.json
-        self.headers.update(new_headers)
-        with open('headers.json', 'w', encoding='utf-8') as json_file:
-            json.dump(self.headers, json_file, ensure_ascii=False, indent=4)
-        return {"message": "Headers updated successfully", "new_headers": self.headers}
+        data = request.json
+        new_headers = data['headers']
+        platform = data['name']
+        if not platform in self.platform_list:
+            return jsonify({"error": "Invalid name"}), 400
+        self.headers[platform].update(new_headers)
+        with open(f'{platform}_headers.json', 'w', encoding='utf-8') as json_file:
+            json.dump(self.headers[platform], json_file, ensure_ascii=False, indent=4)
+        return jsonify({"message": f"Headers file {platform}_headers.json updated successfully", "new_headers": headers})
 
 
 
@@ -174,8 +197,10 @@ class Scrabbler:
             'pageSize': request.args.get('pageSize', default=15, type=int),
             'keyword': '',
         }
+        headers = self.headers['jw']
+
         try:
-            re = requests.post('https://jw.scut.edu.cn/zhinan/cms/article/v2/findInformNotice.do', headers=self.headers,
+            re = requests.post('https://jw.scut.edu.cn/zhinan/cms/article/v2/findInformNotice.do', headers=headers,
                                params=pa, proxies=self.proxy)
             tx = re.text
             js = json.loads(tx)  # 解析为json格式
@@ -217,5 +242,98 @@ class Scrabbler:
         # 错误处理
         except requests.exceptions.ConnectionError:
             return {"error": "socks5代理服务器错误，请检查410wifi上的代理服务"}, 500
+        except Exception as e:
+            return {"error": f"发生未知错误: {e}"}, 500
+
+    def myscut_notice(self, request):
+        '''
+        抓取统一门户的事务通知
+        :param request: flask request对象, 包含输入参数
+        :return: json格式数据
+        '''
+        # 根据name判断category
+        if not request.args.get('name'):
+            return {"error": "name parameter is required"}, 400
+        name = request.args.get('name')
+
+        name_type_dict = {
+            'myscut_gw': '公务通知',
+            'myscut_sw': '事务通知',
+            'myscut_xz': '行政公文',
+            'myscut_dw': '党务公文',
+            'myscut_xs': '学术通知',
+            'myscut_news': '校园新闻',
+        }
+
+        type = name_type_dict.get(name)
+        if not type:
+            return {"error": "name parameter must be one of 'myscut_gw', 'myscut_sw', 'myscut_xz', 'myscut_dw', 'myscut_xs', 'myscut_news'"}, 400
+
+        # 构造请求的 payload
+        payload = {
+            "mapping": "getAllPimList",
+            "pageNum": request.args.get('pageNum', default=1, type=int),
+            "pageSize": request.args.get('pageSize', default=15, type=int),
+            "PIM_TITLE": "",
+            "TYPE_NAME": type,
+            "BELONG_UNIT_NAME": "",
+            "START_TIME": "",
+            "END_TIME": ""
+        }
+        # 加载专用的headers，如果不存在则使用默认
+        headers = self.headers['myscut']
+        url = 'https://my.scut.edu.cn/up/up/pim/allpim/getAllPimList'
+
+        # --- 使用自定义 Adapter 以兼容旧版SSL ---
+        session = requests.Session()
+        # 将类中预定义的低安全性Adapter挂载到https协议上
+        session.mount('https://', Low_secure_HttpAdapter())
+
+        try:
+            # 使用 session 对象发送请求
+            re = session.post(url, headers=headers, json=payload, proxies=self.proxy)
+            re.raise_for_status()  # 检查请求是否成功 (e.g., 4xx or 5xx errors)
+            js = re.json()
+
+            # 按照 RESOURCE_ID 解析为字典
+            data_dict = {}
+            datalist = js.get('list', [])  # 使用 .get() 避免因缺少'list'键而报错
+            for data in datalist:
+                # 使用 RESOURCE_ID 作为唯一键
+                data_dict[str(data['RESOURCE_ID'])] = data
+
+            # 与 quick storage 进行比对，获取新内容
+            compare_result = self._compare(data_dict, name)
+            whether_new, new_data = compare_result
+
+            # 覆盖 quick storage
+            with open(f'./data/{name}_q.json', 'w', encoding='utf-8') as quick_storage_file:
+                json.dump(data_dict, quick_storage_file, ensure_ascii=False, indent=4)
+            self.qdata[name] = data_dict  # 更新内存中的 quick storage
+
+            # update longtime storage
+            long_data = {}
+            long_storage_path = f'./data/{name}_long.json'
+            if os.path.exists(long_storage_path):
+                with open(long_storage_path, 'r', encoding='utf-8') as long_storage_file:
+                    # 检查文件是否为空
+                    if os.fstat(long_storage_file.fileno()).st_size != 0:
+                        long_data = json.load(long_storage_file)
+
+            if new_data:
+                long_data.update(new_data)
+                with open(long_storage_path, 'w', encoding='utf-8') as long_storage_file:
+                    json.dump(long_data, long_storage_file, ensure_ascii=False, indent=4)
+
+            return {"message": "Scrabble successful for my.scut.edu.cn", "NewData": new_data,
+                    "WhetherNew": whether_new}, 200
+
+        # 更具体的错误处理
+        except requests.exceptions.SSLError as e:
+            return {"error": f"SSL 错误，无法连接到目标服务器: {e}"}, 500
+        except requests.exceptions.ConnectionError:
+            return {"error": "代理服务器或网络连接错误，请检查代理设置和网络状态"}, 500
+        except requests.exceptions.HTTPError as e:
+            return {"error": f"HTTP 请求错误: {e.response.status_code} {e.response.reason}"}, 500
         except Exception as e:
             return {"error": f"发生未知错误: {e}"}, 500

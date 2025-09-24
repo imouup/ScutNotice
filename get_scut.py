@@ -1,3 +1,5 @@
+# 已弃用
+
 import os
 import requests
 import json
@@ -54,11 +56,15 @@ def get_jw_notice():
 @app.route('/scut/edit_headers', methods=['POST'])
 def edit_headers():
     global headers
-    new_headers = request.json
+    data = request.json
+    new_headers = data['headers']
+    name = data['name']
+    if not name in ['jw', 'myscut']:
+        return jsonify({"error": "Invalid name"}), 400
     headers.update(new_headers)
-    with open('headers.json', 'w', encoding='utf-8') as json_file:
+    with open(f'{name}_headers.json', 'w', encoding='utf-8') as json_file:
         json.dump(headers, json_file, ensure_ascii=False, indent=4)
-    return jsonify({"message": "Headers updated successfully", "new_headers": headers})
+    return jsonify({"message": f"Headers file {name}_headers.json updated successfully", "new_headers": headers})
 
 
 @app.route('/scut/qstorage', methods=['POST'])
