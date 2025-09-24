@@ -1,4 +1,6 @@
 import os
+from datetime import datetime
+
 import requests
 import json
 from flask import Flask, jsonify, request
@@ -37,9 +39,10 @@ class Scrabbler:
         self.namelist = ['jw', 'xy', 'myscut_gw', 'myscut_sw', 'myscut_xz', 'myscut_dw', 'myscut_xs', 'myscut_news'] # 所有数据的存储名称, 用于数据存储
         self.platform_list = ['jw', 'myscut'] # 支持的平台
         self.qdata = {} # quick storage 内存
+        self.headers = {}
         self._set()
         self._load_quick_storage()  # 加载 quick storage 中的内容到内存
-        self.headers = {}
+
 
     def _load_headers(self):
 
@@ -102,7 +105,7 @@ class Scrabbler:
 
     # 初始化代理和 headers
     def _set(self):
-        self.headers = self._load_headers()
+        self._load_headers()
         self.proxy = self._load_proxy()
 
 
@@ -209,7 +212,15 @@ class Scrabbler:
             data_dict = {}
             datalist = js['list']
             for data in datalist:
-                data_dict[str(data['id'])] = data
+                normalized_item = {
+                    'id': str(data['id']),
+                    'title': data['title'],
+                    'createTime': data['createTime'],
+                    'tag': data['tag']
+                }
+                normalized_item.update(data)
+
+                data_dict[normalized_item['id']] = normalized_item
 
             # 与 quick storage 进行比对，获取新内容
             compare_result = self._compare(data_dict, request.args.get('name'))
@@ -291,7 +302,7 @@ class Scrabbler:
 
         try:
             # 使用 session 对象发送请求
-            re = session.post(url, headers=headers, json=payload, proxies=self.proxy)
+            re = session.post(url, headers=headers, json=payload, proxies=None)  # 暂时不使用代理
             re.raise_for_status()  # 检查请求是否成功 (e.g., 4xx or 5xx errors)
             js = re.json()
 
@@ -299,8 +310,25 @@ class Scrabbler:
             data_dict = {}
             datalist = js.get('list', [])  # 使用 .get() 避免因缺少'list'键而报错
             for data in datalist:
-                # 使用 RESOURCE_ID 作为唯一键
-                data_dict[str(data['RESOURCE_ID'])] = data
+                ## --- 数据标准化处理 ---
+                # 将毫秒时间戳转换为 YYYY.MM.DD 格式字符串
+                ts_ms = data['CREATE_TIME']
+                dt_object = datetime.fromtimestamp(ts_ms / 1000)
+                formatted_time = dt_object.strftime('%Y.%m.%d')
+
+                # 创建标准格式的字典
+                normalized_item = {
+                    'id': str(data['RESOURCE_ID']),
+                    'title': data['PIM_TITLE'],
+                    'createTime': formatted_time
+                    # myscut 数据没有 tag，所以不添加
+                }
+
+                # 将原始数据也并入，以防未来需要
+                normalized_item.update(data)
+
+                # 使用标准化的id和数据
+                data_dict[normalized_item['id']] = normalized_item
 
             # 与 quick storage 进行比对，获取新内容
             compare_result = self._compare(data_dict, name)

@@ -25,6 +25,42 @@ namedict = {
         'title':'华南理工大学教务处学院通知',
         'href':'https://jw.scut.edu.cn/zhinan/cms/toPosts.do?category=1&tag=6',
         'description':'华南理工大学教务处官网发布的学院通知， 包含各学院向全校公开的考试、选课等通知信息',
+    },
+    'myscut_gw':{
+        'link_prefix':'https://jw.scut.edu.cn/zhinan/cms/article/view.do?type=posts&id=',
+        'title':'华南理工大学统一门户公务通知',
+        'href':'https://jw.scut.edu.cn/zhinan/cms/toPosts.do?category=1&tag=6',
+        'description':'华华南理工大学统一门户公务通知',
+    },
+    'myscut_sw':{
+        'link_prefix':'https://jw.scut.edu.cn/zhinan/cms/article/view.do?type=posts&id=',
+        'title':'华南理工大学统一门户公务通知',
+        'href':'https://jw.scut.edu.cn/zhinan/cms/toPosts.do?category=1&tag=6',
+        'description':'华华南理工大学统一门户事务通知',
+    },
+    'myscut_xz': {
+        'link_prefix': 'https://jw.scut.edu.cn/zhinan/cms/article/view.do?type=posts&id=',
+        'title': '华南理工大学统一门户公务通知',
+        'href': 'https://jw.scut.edu.cn/zhinan/cms/toPosts.do?category=1&tag=6',
+        'description': '华华南理工大学统一门户行政公文',
+    },
+    'myscut_dw': {
+        'link_prefix': 'https://jw.scut.edu.cn/zhinan/cms/article/view.do?type=posts&id=',
+        'title': '华南理工大学统一门户公务通知',
+        'href': 'https://jw.scut.edu.cn/zhinan/cms/toPosts.do?category=1&tag=6',
+        'description': '华华南理工大学统一门户党务公文',
+    },
+    'myscut_xs': {
+        'link_prefix': 'https://jw.scut.edu.cn/zhinan/cms/article/view.do?type=posts&id=',
+        'title': '华南理工大学统一门户公务通知',
+        'href': 'https://jw.scut.edu.cn/zhinan/cms/toPosts.do?category=1&tag=6',
+        'description': '华华南理工大学统一门户学术通知',
+    },
+    'myscut_news': {
+        'link_prefix': 'https://jw.scut.edu.cn/zhinan/cms/article/view.do?type=posts&id=',
+        'title': '华南理工大学统一门户公务通知',
+        'href': 'https://jw.scut.edu.cn/zhinan/cms/toPosts.do?category=1&tag=6',
+        'description': '华华南理工大学统一门户校园新闻',
     }
 }
 
@@ -52,11 +88,15 @@ for name in namelist:
 @app.route('/update', methods=['POST'])
 def update():
     name = request.json.get('name')
+    multi = request.json.get('multi') # 是否有多个tags 0/1
+    tag_num = request.json.get('tag_num') # tag数量
+
     # 记录result
     result = {}
     result[0] = feed(name) # 更新完整rss
-    for tag in range(1,7):
-        result[tag] = feed_tag(name, tag)
+    if multi == 1:
+        for tag in range(1,tag_num+1):
+            result[tag] = feed_tag(name, tag)
 
     # 记录最后更新时间
     global lastUpdated
@@ -107,6 +147,7 @@ def feed(name):
 
     # 按时间对数据进行排序
     notifications_list = list(jsondata.values())
+
     sorted_data = sorted(
         notifications_list,
         key=lambda item: datetime.strptime(item['createTime'], '%Y.%m.%d'),
