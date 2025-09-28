@@ -1,33 +1,31 @@
 import os
 from datetime import datetime
-
 import requests
 import json
 from flask import Flask, jsonify, request
 import ssl
 from requests.adapters import HTTPAdapter
 from urllib3.poolmanager import PoolManager
-
-from scut.get_scut import headers
+from urllib3.util import create_urllib3_context
 
 os.makedirs("./data", exist_ok=True)
 os.makedirs("./headers", exist_ok=True)
 
 # 定义一个低 SSL 安全性的自定义 Adapter, 用于抓取统一门户通知
 class Low_secure_HttpAdapter(HTTPAdapter):
-    def init_poolmanager(self, connections, maxsize, block=False):
-        # 创建一个自定义的 SSL 上下文
-        # 'ALL' 表示接受所有服务端支持的加密算法
-        # @SECLEVEL=1 降低了安全等级（默认为2），允许一些老旧但仍被部分服务器使用的算法
-        ctx = ssl.create_default_context()
-        ctx.set_ciphers('ALL:@SECLEVEL=1')
+    def init_poolmanager(self, *args, **kwargs):
+        # 1. 使用 urllib3 推荐的辅助函数来创建上下文
+        context = create_urllib3_context()
 
-        self.poolmanager = PoolManager(
-            num_pools=connections,
-            maxsize=maxsize,
-            block=block,
-            ssl_context=ctx
-        )
+        # 2. 主要通过修改 context.options 来禁用新协议
+        context.options |= ssl.OP_NO_TLSv1_3
+        context.set_ciphers('DEFAULT@SECLEVEL=1')  # 也可以用 'ALL:@SECLEVEL=1'
+
+        # 3. 将上下文放入 kwargs，然后调用父类的方法
+        #    这样可以保留 requests 和 urllib3 的其他所有默认行为
+        kwargs['ssl_context'] = context
+        return super().init_poolmanager(*args, **kwargs)
+
 
 class Scrabbler:
     '''
@@ -120,13 +118,13 @@ class Scrabbler:
 
         data = request.json
         new_headers = data['headers']
-        platform = data['name']
+        platform = data['platform']
         if not platform in self.platform_list:
-            return jsonify({"error": "Invalid name"}), 400
+            return jsonify({"error": "Invalid platform name, which must be in [jw, myscut]"}), 400
         self.headers[platform].update(new_headers)
         with open(f'{platform}_headers.json', 'w', encoding='utf-8') as json_file:
             json.dump(self.headers[platform], json_file, ensure_ascii=False, indent=4)
-        return jsonify({"message": f"Headers file {platform}_headers.json updated successfully", "new_headers": headers})
+        return jsonify({"message": f"Headers file {platform}_headers.json updated successfully", "new_headers": new_headers})
 
 
 
@@ -302,7 +300,7 @@ class Scrabbler:
 
         try:
             # 使用 session 对象发送请求
-            re = session.post(url, headers=headers, json=payload, proxies=None)  # 暂时不使用代理
+            re = session.post(url, headers=headers, json=payload, proxies=None) #TODO:解决打开proxy后出现SSL错误的问题
             re.raise_for_status()  # 检查请求是否成功 (e.g., 4xx or 5xx errors)
             js = re.json()
 
