@@ -1,6 +1,7 @@
 # 审问Notice
 
-## 教务处通知 `jwnotice`
+### 教务处通知 `jwnotice`
+> "platform": "jw"
 
 ### 参数
 | 参数名     | 含义              | 默认值 |
@@ -33,3 +34,15 @@
 | 2   | 考试     |
 | 6   | 信息     |
 
+## Myscut 统一门户通知通知 `myscut`
+> "platform": "myscut"
+
+### 统一门户通知`myscut_<tag>`
+
+| tag  | 含义   |
+|------|------|
+| gw   | 公务通知 |
+| sw   | 事务通知 |
+| xz   | 行政公文 |
+| dw   | 党务公文 |
+| news | 校园新闻 |
