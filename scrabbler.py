@@ -318,7 +318,8 @@ class Scrabbler:
                 normalized_item = {
                     'id': str(data['RESOURCE_ID']),
                     'title': data['PIM_TITLE'],
-                    'createTime': formatted_time
+                    'createTime': formatted_time,
+                    'tag': data['TYPE_NAME']
                     # myscut 数据没有 tag，所以不添加
                 }
 
@@ -363,3 +364,4 @@ class Scrabbler:
             return {"error": f"HTTP 请求错误: {e.response.status_code} {e.response.reason}"}, 500
         except Exception as e:
             return {"error": f"发生未知错误: {e}"}, 500
+

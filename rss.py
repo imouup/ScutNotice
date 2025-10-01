@@ -34,31 +34,31 @@ namedict = {
     },
     'myscut_sw':{
         'link_prefix':'https://my.scut.edu.cn/up/view?m=up#act=up/pim/showpim&id=',
-        'title':'华南理工大学统一门户公务通知',
+        'title':'华南理工大学统一门户事务通知',
         'href':'https://my.scut.edu.cn/up/up/pim/allpim/getAllPimList',
         'description':'华华南理工大学统一门户事务通知',
     },
     'myscut_xz': {
         'link_prefix': 'https://my.scut.edu.cn/up/view?m=up#act=up/pim/showpim&id=',
-        'title': '华南理工大学统一门户公务通知',
+        'title': '华南理工大学统一门户行政公文',
         'href': 'https://my.scut.edu.cn/up/up/pim/allpim/getAllPimList',
         'description': '华华南理工大学统一门户行政公文',
     },
     'myscut_dw': {
         'link_prefix': 'https://my.scut.edu.cn/up/view?m=up#act=up/pim/showpim&id=',
-        'title': '华南理工大学统一门户公务通知',
+        'title': '华南理工大学统一门户党务公文',
         'href': 'https://my.scut.edu.cn/up/up/pim/allpim/getAllPimList',
         'description': '华华南理工大学统一门户党务公文',
     },
     'myscut_xs': {
         'link_prefix': 'https://my.scut.edu.cn/up/view?m=up#act=up/pim/showpim&id=',
-        'title': '华南理工大学统一门户公务通知',
+        'title': '华南理工大学统一门户学术通知',
         'href': 'https://my.scut.edu.cn/up/up/pim/allpim/getAllPimList',
         'description': '华华南理工大学统一门户学术通知',
     },
     'myscut_news': {
         'link_prefix': 'https://my.scut.edu.cn/up/view?m=up#act=up/pim/showpim&id=',
-        'title': '华南理工大学统一门户公务通知',
+        'title': '华南理工大学统一门户校园新闻',
         'href': 'https://my.scut.edu.cn/up/up/pim/allpim/getAllPimList',
         'description': '华华南理工大学统一门户校园新闻',
     }
