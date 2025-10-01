@@ -122,7 +122,7 @@ class Scrabbler:
         if not platform in self.platform_list:
             return jsonify({"error": "Invalid platform name, which must be in [jw, myscut]"}), 400
         self.headers[platform].update(new_headers)
-        with open(f'{platform}_headers.json', 'w', encoding='utf-8') as json_file:
+        with open(f'headers/{platform}_headers.json', 'w', encoding='utf-8') as json_file:
             json.dump(self.headers[platform], json_file, ensure_ascii=False, indent=4)
         return jsonify({"message": f"Headers file {platform}_headers.json updated successfully", "new_headers": new_headers})
 
