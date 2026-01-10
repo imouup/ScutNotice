@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.idea/
+
+# Data (retain folder structure)
+data/*
+!data/.gitkeep
+
+# RSS Public (retain folder structure)
+rsspublic/**/*
+!rsspublic/**/
+!rsspublic/**/.gitkeep

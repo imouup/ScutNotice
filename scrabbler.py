@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 import requests
 import json
+import re
 from flask import Flask, jsonify, request
 import ssl
 from requests.adapters import HTTPAdapter
@@ -34,8 +35,8 @@ class Scrabbler:
     def __init__(self):
         self.headers = None
         self.proxy = None
-        self.namelist = ['jw', 'xy', 'myscut_gw', 'myscut_sw', 'myscut_xz', 'myscut_dw', 'myscut_xs', 'myscut_news'] # 所有数据的存储名称, 用于数据存储
-        self.platform_list = ['jw', 'myscut'] # 支持的平台
+        self.namelist = ['jw', 'xy', 'myscut_gw', 'myscut_sw', 'myscut_xz', 'myscut_dw', 'myscut_xs', 'myscut_news', 'youth'] # 所有数据的存储名称, 用于数据存储
+        self.platform_list = ['jw', 'myscut', 'youth'] # 支持的平台
         self.qdata = {} # quick storage 内存
         self.headers = {}
         self._set()
@@ -56,8 +57,8 @@ class Scrabbler:
     def _load_proxy(self):
         # 设置代理
         proxy = {
-            'http': 'socks5://10.195.134.11:1080',
-            'https': 'socks5://10.195.134.11:1080',
+            'http': 'socks5h://10.195.134.11:1080',
+            'https': 'socks5h://10.195.134.11:1080',
         }
         return proxy
 
@@ -362,6 +363,106 @@ class Scrabbler:
             return {"error": "代理服务器或网络连接错误，请检查代理设置和网络状态"}, 500
         except requests.exceptions.HTTPError as e:
             return {"error": f"HTTP 请求错误: {e.response.status_code} {e.response.reason}"}, 500
+        except Exception as e:
+            return {"error": f"发生未知错误: {e}"}, 500
+        
+    def youth_notice(self, request):
+        '''
+        抓取校共青团通知
+        :param request: flask request对象, 包含输入参数
+        :return: 字典格式数据
+        '''
+        name = request.args.get('name', 'youth')
+        
+        # 构造 URL
+        page_num = request.args.get('pageNum', default=1, type=int)
+        if page_num == 1:
+            url = 'https://www2.scut.edu.cn/youth/tzgg/list.htm'
+        else:
+            url = f'https://www2.scut.edu.cn/youth/tzgg/list{page_num}.htm'
+
+        headers = self.headers.get('youth', {})
+
+        try:
+            re_response = requests.get(url, headers=headers, proxies=self.proxy)
+            re_response.encoding = 'utf-8'
+            html_content = re_response.text
+
+            # Regex 解析
+            data_dict = {}
+            
+            # 定位到 main-list
+            main_list_match = re.search(r'<ul class="main-list">(.*?)</ul>', html_content, re.DOTALL)
+            
+            if main_list_match:
+                list_content = main_list_match.group(1)
+                items = re.findall(r'<li>(.*?)</li>', list_content, re.DOTALL)
+                
+                for item in items:
+                    # 提取链接
+                    link_match = re.search(r'<a href="([^"]+)"', item)
+                    if not link_match:
+                        continue
+                    link = link_match.group(1)
+                    
+                    if not link.startswith('http'):
+                        full_link = 'https://www2.scut.edu.cn' + link
+                    else:
+                        full_link = link
+                    
+                    # 提取 ID (从链接中提取 cXXXXXX 部分)
+                    id_match = re.search(r'/([^/]+)/page\.htm', link)
+                    if id_match:
+                        id_val = id_match.group(1)
+                    else:
+                        continue 
+
+                    # 提取标题
+                    title_match = re.search(r'<div class="title[^"]*">\s*<span>(.*?)</span>', item, re.DOTALL)
+                    title = title_match.group(1).strip() if title_match else "No Title"
+
+                    # 提取日期
+                    date_match = re.search(r'<div class="date">(.*?)</div>', item)
+                    create_time = date_match.group(1).strip().replace('-', '.') if date_match else ""
+
+                    normalized_item = {
+                        'id': id_val,
+                        'title': title,
+                        'createTime': create_time,
+                        'tag': '通知公告',
+                        'link': full_link
+                    }
+                    
+                    data_dict[id_val] = normalized_item
+
+            # 与 quick storage 进行比对
+            compare_result = self._compare(data_dict, name)
+            whether_new, new_data = compare_result
+
+            # 覆盖 quick storage
+            with open(f'./data/{name}_q.json', 'w', encoding='utf-8') as quick_storage_file:
+                json.dump(data_dict, quick_storage_file, ensure_ascii=False, indent=4)
+            if name in self.qdata:
+                self.qdata[name] = data_dict
+
+            # update longtime storage
+            long_storage_path = f'./data/{name}_long.json'
+            long_data = {}
+            if os.path.exists(long_storage_path):
+                with open(long_storage_path, 'r', encoding='utf-8') as long_storage_file:
+                    if os.fstat(long_storage_file.fileno()).st_size != 0:
+                        long_data = json.load(long_storage_file)
+
+            if new_data:
+                long_data.update(new_data)
+                with open(long_storage_path, 'w', encoding='utf-8') as long_storage_file:
+                    json.dump(long_data, long_storage_file, ensure_ascii=False, indent=4)
+
+            return {"message": "Scrabble successful", "NewData": new_data, "WhetherNew": whether_new}, 200
+
+        # 错误处理
+        except requests.exceptions.ConnectionError:
+            return {"error": "socks5代理服务器错误，请检查410wifi上的代理服务"}, 500
         except Exception as e:
             return {"error": f"发生未知错误: {e}"}, 500
 

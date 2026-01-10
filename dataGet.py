@@ -44,6 +44,19 @@ def myscut_notice():
             update_re = update_rss(name,0,0)
     return jsonify({'getre':reData, 'update_re': update_re if update_re else 'No need to update rss'}) # 返回抓取结果和更新结果
 
+# 团委通知
+@app.route('/scut/youth_notice', methods=['GET'])
+def youth_notice():
+    reData = scrabbler.youth_notice(request) # 传入request对象
+    update_re = None
+    # 仅当成功抓取数据后更新long storage
+    if reData[1] == 200:
+        whethernew = reData[0].get('WhetherNew') # 判断是否需要更新RSS
+        if whethernew == 1:
+            name = request.args.get('name', 'youth')
+            update_re = update_rss(name,0,0) # youth 没有 tag 分类
+    return jsonify({'getre':reData, 'update_re': update_re if update_re else 'No need to update rss'}) # 返回抓取结果和更新结果
+
 # 后端api
 ## 修改headers接口
 @app.route('/scut/edit_headers', methods=['POST'])

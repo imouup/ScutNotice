@@ -61,6 +61,12 @@ namedict = {
         'title': '华南理工大学统一门户校园新闻',
         'href': 'https://my.scut.edu.cn/up/up/pim/allpim/getAllPimList',
         'description': '华华南理工大学统一门户校园新闻',
+    },
+    'youth': {
+        'link_prefix': 'https://www2.scut.edu.cn',
+        'title': '华南理工大学校团委通知',
+        'href': 'https://www2.scut.edu.cn/youth/tzgg/list.htm',
+        'description': '华南理工大学校团委通知公告',
     }
 }
 
@@ -171,7 +177,10 @@ def feed(name):
         fe = fg.add_entry()
 
         # 构建文章链接
-        notice_url = f'{infos["link_prefix"]}{notice["id"]}'
+        if 'link' in notice:
+            notice_url = notice['link']
+        else:
+            notice_url = f'{infos["link_prefix"]}{notice["id"]}'
 
         fe.id(notice_url)
         fe.title(notice['title'])
@@ -244,7 +253,10 @@ def feed_tag(name, tag):
             fe = fg.add_entry()
 
             # 构建文章链接
-            notice_url = f'{infos["link_prefix"]}{notice["id"]}'
+            if 'link' in notice:
+                notice_url = notice['link']
+            else:
+                notice_url = f'{infos["link_prefix"]}{notice["id"]}'
 
             fe.id(notice_url)
             fe.title(notice['title'])
